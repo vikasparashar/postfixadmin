@@ -197,6 +197,10 @@ function db_query_parsed($sql, $ignore_errors = 0, $attach_mysql = "") {
                 'int(4)'            => 'int', 
                 );
 
+	//as of now, we are just passing ldap in it
+    } elseif($CONF['database_type'] == 'ldap') {
+	 $replace = array();
+	
     } else {
         echo "Sorry, unsupported database type " . $conf['database_type'];
         exit;
@@ -1087,8 +1091,11 @@ function upgrade_504_mysql() {
 }
 
 function upgrade_655() {
+//	global $CONF
+//	if($CONF['database_type'] != 'ldap') {	
     db_query_parsed(_add_index('mailbox', 'domain', 'domain'));
     db_query_parsed(_add_index('alias',   'domain', 'domain'));
+//	}
 }
 
 function upgrade_729() {

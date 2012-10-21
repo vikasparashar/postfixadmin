@@ -226,7 +226,7 @@ if ($f_ldap_connect == 1)
 if ($config_loaded) {
     list ($link, $error_text) = db_connect(TRUE);
     if ($error_text == "") {
-        print "<li>Testing database connection - OK - {$CONF['database_type']}://{$CONF['database_user']}:xxxxx@{$CONF['database_host']}/{$CONF['database_name']}</li>";
+        print "<li>Testing database connection - OK - {$CONF['database_type']}://{$CONF['database_user']}:xxxxx@{$CONF['database_host']}/{$CONF['database_name']}{$CONF['database_suffix']}</li>";
     } else {
         print "<li><b>Error: Can't connect to database</b><br />\n";
         print "Please edit the \$CONF['database_*'] parameters in config.inc.php.\n";
@@ -315,7 +315,9 @@ if ($error != 0)
 else
 {
     print "<p>Everything seems fine... attempting to create/update database structure</p>\n";
+    if($CONF['database_type']!='ldap'){
     require_once($incpath.'/upgrade.php');
+	}
 
     $pAdminCreate_admin_username_text = $PALANG['pAdminCreate_admin_username_text'];
     $pAdminCreate_admin_password_text = "";
