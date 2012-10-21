@@ -1525,6 +1525,24 @@ function db_connect ($ignore_errors = 0)
             $error_text .= "<p />DEBUG INFORMATION:<br />PostgreSQL functions not available! (php5-pgsql installed?)<br />database_type = 'pgsql' in config.inc.php, are you using a different database? $DEBUG_TEXT";
         }
     }
+    elseif ($CONF['database_type'] == "ldap")
+    {
+        if (function_exists ("ldap_connect"))
+        {
+		
+            if(!isset($CONF['database_port'])) {
+                $CONF['database_port'] = '389';
+            }
+            $link = @ldap_connect ($CONF['database_host'], $CONF['database_port']) or $error_text .= ("<p />DEBUG INFORMATION:<br />Connect: " .  ldap_error () . "$DEBUG_TEXT");
+            if ($link) {
+                $succes = @ldap_bind ($link, $CONF['database_user'], $CONF['database_password']) or $error_text .= ("<p />DEBUG INFORMATION:<br />Ldap connect: " .  ldap_error () . "$DEBUG_TEXT");
+            }
+        }
+        else
+        {
+            $error_text .= "<p />DEBUG INFORMATION:<br />Ldap functions not available! (php-ldap installed?)<br />database_type = 'ldap' in config.inc.php, are you using a different database? $DEBUG_TEXT";
+        }
+    }
     else
     {
         $error_text = "<p />DEBUG INFORMATION:<br />Invalid \$CONF['database_type']! Please fix your config.inc.php! $DEBUG_TEXT";
