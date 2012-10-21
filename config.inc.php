@@ -23,7 +23,7 @@
  * Doing this implies you have changed this file as required.
  * i.e. configuring database etc; specifying setup.php password etc.
  */
-$CONF['configured'] = false;
+$CONF['configured'] = true;
 
 // In order to setup Postfixadmin, you MUST specify a hashed password here.
 // To create the hash, visit setup.php in a browser and type a password into the field,
@@ -46,11 +46,20 @@ $CONF['default_language'] = 'en';
 // mysql = MySQL 3.23 and 4.0, 4.1 or 5
 // mysqli = MySQL 4.1+ 
 // pgsql = PostgreSQL
-$CONF['database_type'] = 'mysql';
+// ldap = openldap 2.3 or higher
+#$CONF['database_type'] = 'ldap';
+#$CONF['database_host'] = 'localhost';
+#$CONF['database_user'] = 'postfix';
+#$CONF['database_password'] = 'postfixadmin';
+#$CONF['database_name'] = 'postfix';
+
+#  If you are using Ldap backend, you need to comment 
+$CONF['database_type'] = 'ldap';
 $CONF['database_host'] = 'localhost';
-$CONF['database_user'] = 'postfix';
+$CONF['database_user'] = 'cn=admin,dc=postfix,dc=com';
 $CONF['database_password'] = 'postfixadmin';
-$CONF['database_name'] = 'postfix';
+//$CONF['database_name'] = 'postfix';
+$CONF['database_suffix'] = 'dc=postfix,dc=com';
 // If you need to specify a different port for a MYSQL database connection, use e.g.
 //   $CONF['database_host'] = '172.30.33.66:3308';
 // If you need to specify a different port for POSTGRESQL database connection
