@@ -47,6 +47,7 @@ $f_apache_get_version = function_exists ("apache_get_version");
 $f_get_magic_quotes_gpc = function_exists ("get_magic_quotes_gpc");
 $f_mysql_connect = function_exists ("mysql_connect");
 $f_mysqli_connect = function_exists ("mysqli_connect");
+$f_ldap_connect = function_exists ("ldap_connect");
 $f_pg_connect = function_exists ("pg_connect");
 $f_session_start = function_exists ("session_start");
 $f_preg_match = function_exists ("preg_match");
@@ -145,7 +146,7 @@ else
 //
 // Check if there is support for at least 1 database
 //
-if (($f_mysql_connect == 0) and ($f_mysqli_connect == 0) and ($f_pg_connect == 0))
+if (($f_mysql_connect == 0) and ($f_mysqli_connect == 0) and ($f_pg_connect == 0) and ($f_ldap_connect == 0))
 {
     print "<li><b>Error: There is no database support in your PHP setup</b><br />\n";
     print "To install MySQL 3.23 or 4.0 support on FreeBSD:<br />\n";
@@ -166,6 +167,11 @@ if (($f_mysql_connect == 0) and ($f_mysqli_connect == 0) and ($f_pg_connect == 0
     print "% make clean install\n";
     print " - or with portupgrade -\n";
     print "% portinstall php$phpversion-pgsql</pre></li>\n";
+    print "To install Ldap support on FreeBSD:<br />\n";
+    print "<pre>% cd /usr/ports/databases/php$phpversion-ldap/\n";
+    print "% make clean install\n";
+    print " - or with portupgrade -\n";
+    print "% portinstall php$phpversion-ldap</pre></li>\n";
     $error =+ 1;
 }
 //
@@ -203,6 +209,17 @@ if ($f_pg_connect == 1)
     print "</li>";
 }
 
+//
+// PostgreSQL functions
+//
+if ($f_ldap_connect == 1)
+{
+    print "<li>Depends on: Ldap - OK \n";
+    if ( !($config_loaded && $CONF['database_type'] == 'ldap') ) {
+        print "(change the database_type to 'ldap' in config.inc.php!!)\n";
+    }
+    print "</li>";
+}
 //
 // Database connection
 //
