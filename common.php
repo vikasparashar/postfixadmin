@@ -44,7 +44,11 @@ if(isset($CONF['configured'])) {
 
 
 require_once("$incpath/languages/language.php");
+if ($CONF['database_type'] == 'ldap'){
+require_once("$incpath/functions.inc.ldap.php");
+} else {
 require_once("$incpath/functions.inc.php");
+}
 require_once("$incpath/languages/" . check_language () . ".lang");
 
 /**
