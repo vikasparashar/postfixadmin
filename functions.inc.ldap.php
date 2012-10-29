@@ -846,7 +846,7 @@ function list_domains ()
 //
 function admin_exist ($username)
 {
-    $result = db_query ("SELECT 1 FROM " . table_by_key ('admin') . " WHERE username='$username'");
+    $result = db_query ("SELECT email FROM " . table_by_key ('admin') . " WHERE username='$username'");
     if ($result['rows'] != 1)
     {
         return false;
@@ -1603,6 +1603,38 @@ function db_get_boolean($bool) {
     }
 }
 
+
+// sql_to_ldap
+// Action: Change the query request mysql to ldap 
+// Call: sql_to_ldap(string query)
+function sql_to_ldap ($query)
+{
+  
+        if (preg_match("/WHERE/i", trim($query))){
+        $part1=explode("WHERE",$query);
+	}
+        if (preg_match("/FROM/i", $part1['0'])){
+        $part2=explode("FROM",$part1['0']);
+	}
+        if (preg_match("/^SELECT/i", $part2['0'])){
+        $part3=explode("SELECT",$part2['0']);
+	}
+	$condition = $part1["1"];
+	$table = $part2["1"];
+        $value = $part3["1"];
+
+	$condition = str_replace("username", "email", "$condition");
+
+    $return = array (
+        "condition" => $condition,
+        "table" => $table,
+        "value" => $value
+    );
+    return $return;
+
+}
+
+
 //
 // db_query
 // Action: Sends a query to the database and returns query result and number of rows
@@ -1618,18 +1650,17 @@ function db_query ($query, $ignore_errors = 0)
     static $link;
     $error_text = "";
     if ($ignore_errors) $DEBUG_TEXT = "";
+		
+    $value = sql_to_ldap($query);
 
     if (!is_resource($link)) $link = db_connect ();
 
-    if ($CONF['database_type'] == "mysql") $result = @mysql_query ($query, $link) 
-        or $error_text = "<p />DEBUG INFORMATION:<br />Invalid query: " . mysql_error($link) . "$DEBUG_TEXT";
-    if ($CONF['database_type'] == "mysqli") $result = @mysqli_query ($link, $query) 
-        or $error_text = "<p />DEBUG INFORMATION:<br />Invalid query: " . mysqli_error($link) . "$DEBUG_TEXT";
-    if ($CONF['database_type'] == "pgsql")
-    {
-        $result = @pg_query ($link, $query) 
-            or $error_text = "<p />DEBUG INFORMATION:<br />Invalid query: " . pg_last_error() . "$DEBUG_TEXT";
-    }
+	$filter='("' . $value['condition'] . '")';
+	$justthese =  array($value['value']);
+
+
+    if ($CONF['database_type'] == "ldap") $result = @ldap_search ($link, $CONF['database_suffix'], $filter, $justthese)
+       or $error_text = "<p />DEBUG INFORMATION:<br />Invalid query: " . ldap_error($link) . "$DEBUG_TEXT";
     if ($error_text != "" && $ignore_errors == 0) die($error_text);
 
     if ($error_text == "") {
@@ -1637,16 +1668,12 @@ function db_query ($query, $ignore_errors = 0)
         {
             // if $query was a SELECT statement check the number of rows with [database_type]_num_rows ().
             if ($CONF['database_type'] == "mysql") $number_rows = mysql_num_rows ($result);
-            if ($CONF['database_type'] == "mysqli") $number_rows = mysqli_num_rows ($result);
-            if ($CONF['database_type'] == "pgsql") $number_rows = pg_num_rows ($result);
         }
-        else
+      else
         {
             // if $query was something else, UPDATE, DELETE or INSERT check the number of rows with
             // [database_type]_affected_rows ().
             if ($CONF['database_type'] == "mysql") $number_rows = mysql_affected_rows ($link);
-            if ($CONF['database_type'] == "mysqli") $number_rows = mysqli_affected_rows ($link);
-            if ($CONF['database_type'] == "pgsql") $number_rows = pg_affected_rows ($result);
         }
     }
 
@@ -1657,6 +1684,9 @@ function db_query ($query, $ignore_errors = 0)
     );
     return $return;
 }
+
+
+
 
 
 
