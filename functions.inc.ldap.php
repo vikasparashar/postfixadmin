@@ -1609,26 +1609,48 @@ function db_get_boolean($bool) {
 // Call: sql_to_ldap(string query)
 function sql_to_ldap ($query)
 {
+	echo $query;
   
-        if (preg_match("/WHERE/i", trim($query))){
-        $part1=explode("WHERE",$query);
+        if (preg_match("/^SELECT/i", trim($query))){
+        	if (preg_match("/WHERE/i", trim($query))){
+        	$part1=explode("WHERE",$query);
+		}
+        	if (preg_match("/FROM/i", $part1['0'])){
+        	$part2=explode("FROM",$part1['0']);
+		}
+        	if (preg_match("/^SELECT/i", $part2['0'])){
+        	$part3=explode("SELECT",$part2['0']);
+		$type="SELECT";
+		}
+		$condition = $part1["1"];
+		$table = $part2["1"];
+        	$value = $part3["1"];
 	}
-        if (preg_match("/FROM/i", $part1['0'])){
-        $part2=explode("FROM",$part1['0']);
-	}
-        if (preg_match("/^SELECT/i", $part2['0'])){
-        $part3=explode("SELECT",$part2['0']);
-	}
-	$condition = $part1["1"];
-	$table = $part2["1"];
-        $value = $part3["1"];
 
-	$condition = str_replace("username", "email", "$condition");
+       
+        if (preg_match("/^INSERT/i", $query)){
+        	if (preg_match("/VALUES/i", trim($query))){
+		$part1=explode("VALUES",$query);
+		}
+	print_r($part1);
+		echo 'helo';
+
+        	if (preg_match("/INTO/i", $part1['0'])){
+        	$part2=explode("INTO",$part1['0']);
+		}
+	print_r($part2);
+	//exit;*/
+	}
+
+	$condition = str_replace("username", "mail", "$condition");
+	$condition = str_replace("'", "", "$condition");
+
 
     $return = array (
         "condition" => $condition,
         "table" => $table,
-        "value" => $value
+        "value" => $value,
+        "type" => $type
     );
     return $return;
 
@@ -1655,8 +1677,13 @@ function db_query ($query, $ignore_errors = 0)
 
     if (!is_resource($link)) $link = db_connect ();
 
-	$filter='("' . $value['condition'] . '")';
+	$filter='(' . $value['condition'] . ')';
 	$justthese =  array($value['value']);
+		
+	
+echo "hello".$filter."lll";
+//$filter="( mail=vikas@postfix.com)";
+//$justthese = array("mail");
 
 
     if ($CONF['database_type'] == "ldap") $result = @ldap_search ($link, $CONF['database_suffix'], $filter, $justthese)
@@ -1664,10 +1691,11 @@ function db_query ($query, $ignore_errors = 0)
     if ($error_text != "" && $ignore_errors == 0) die($error_text);
 
     if ($error_text == "") {
-        if (preg_match("/^SELECT/i", trim($query)))
+        if ($value['type'] == "SELECT" )
         {
             // if $query was a SELECT statement check the number of rows with [database_type]_num_rows ().
-            if ($CONF['database_type'] == "mysql") $number_rows = mysql_num_rows ($result);
+            if ($CONF['database_type'] == "ldap") $number_row = ldap_get_entries($link,$result);
+	    $number_rows = $number_row['count'];
         }
       else
         {
