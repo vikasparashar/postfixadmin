@@ -1604,13 +1604,57 @@ function db_get_boolean($bool) {
 }
 
 
+// sql_to_ldap_cond
+// Action: Change the cond of query request mysql to ldap 
+// Call: sql_to_ldap(string query)
+function sql_to_ldap_cond ($cond)
+{
+	$cond=substr($cond,1);
+	
+	$condition=explode(" ",$cond);
+		for($i=0;$i<sizeof($condition);$i++){
+			if($condition[$i] == "AND" ){
+				$condition[$i]="&";
+				$str="$condition[$i]";
+			}
+			if($condition[$i] == "OR" ){
+				$condition[$i]="||";
+				$str="$condition[$i]";
+			}
+			if($condition[$i] == "AccountActive=1" ){
+				$condition[$i]="AccountActive=TRUE";
+			}
+			if($condition[$i] == "AccountActive=0" ){
+				$condition[$i]="AccountActive=FALSE";
+			}
+		}
+		for($i=0;$i<sizeof($condition);$i++){
+			
+			if($condition[$i] == "&"  || $condition[$i] == "||" ){
+				#$str="$condition";
+			}  else {
+
+				$str="$str($condition[$i])";
+			}
+		}
+	 return $str;
+}
+
+
 // sql_to_ldap
 // Action: Change the query request mysql to ldap 
 // Call: sql_to_ldap(string query)
 function sql_to_ldap ($query)
 {
-	echo $query;
+    	global $CONF;
+	include("./ldap.php");
+//	print_r($info);
+	$query = str_replace("username", "mail", "$query");
+	$query = str_replace("password", "userPassword", "$query");
+	$query = str_replace("'", "", "$query");
+	$query = str_replace("active", "AccountActive", "$query");
   
+	# if query is a select query
         if (preg_match("/^SELECT/i", trim($query))){
         	if (preg_match("/WHERE/i", trim($query))){
         	$part1=explode("WHERE",$query);
@@ -1622,35 +1666,67 @@ function sql_to_ldap ($query)
         	$part3=explode("SELECT",$part2['0']);
 		$type="SELECT";
 		}
-		$condition = $part1["1"];
+		$cond = $part1["1"];
+		
+		$condition=sql_to_ldap_cond($cond);
 		$table = $part2["1"];
         	$value = $part3["1"];
 	}
 
-       
+      	# if query is a insert query 
         if (preg_match("/^INSERT/i", $query)){
         	if (preg_match("/VALUES/i", trim($query))){
 		$part1=explode("VALUES",$query);
 		}
-	print_r($part1);
-		echo 'helo';
+		$part1["1"]=substr($part1["1"],2);
+		$part1["1"]=substr($part1["1"],0,-1);
 
         	if (preg_match("/INTO/i", $part1['0'])){
         	$part2=explode("INTO",$part1['0']);
 		}
-	print_r($part2);
-	//exit;*/
+        	$part3=explode(" (",$part2['1']);
+	
+			$table = $part3["0"];
+		if( $part3['0'] == " admin"){
+			$info["vd"] = "ALL";
+			}
+		$part4 = str_replace(")", "", $part3["1"]);
+		$part5 = explode(",",$part4);
+		$part6 = explode(",",$part1["1"]);
+		for($i=0; $i<sizeof($part6);$i++){
+			if( $part3['0'] == " admin"){
+				if( $part5[$i] == "created" || $part5[$i] == "modified " )
+				{
+					continue;
+				}
+				
+				$info[$part5[$i]]=$part6[$i];
+			}	
+		}	
+		$type="INSERT";
 	}
 
 	$condition = str_replace("username", "mail", "$condition");
 	$condition = str_replace("'", "", "$condition");
+	if($info['cn'] == "" ){
+		$info['cn'] = $info['mail'];
+	}
+	if($info['sn'] == "" ){
+		$info['sn'] = $info['mail'];
+	}
 
+			if( $part3['0'] == " admin"){
+					$userbase="o=virtual," . $CONF['database_suffix'];
+				}
+//	print_r($info);
 
     $return = array (
         "condition" => $condition,
         "table" => $table,
         "value" => $value,
-        "type" => $type
+        "type" => $type,
+        "insertvalue" => $info,
+	"userbase" => $userbase
     );
     return $return;
 
@@ -1680,28 +1756,50 @@ function db_query ($query, $ignore_errors = 0)
 	$filter='(' . $value['condition'] . ')';
 	$justthese =  array($value['value']);
 		
-	
-echo "hello".$filter."lll";
-//$filter="( mail=vikas@postfix.com)";
-//$justthese = array("mail");
 
 
-    if ($CONF['database_type'] == "ldap") $result = @ldap_search ($link, $CONF['database_suffix'], $filter, $justthese)
-       or $error_text = "<p />DEBUG INFORMATION:<br />Invalid query: " . ldap_error($link) . "$DEBUG_TEXT";
-    if ($error_text != "" && $ignore_errors == 0) die($error_text);
+	echo $filter."\n";
+	echo $justthese;	
+
+	# if query was a select statement
+        if ($value['type'] == "SELECT" ){
+    		if ($CONF['database_type'] == "ldap") $result = @ldap_search ($link, $CONF['database_suffix'], $filter, $justthese)
+       		or $error_text = "<p />DEBUG INFORMATION:<br />Invalid query: " . ldap_error($link) . "$DEBUG_TEXT";
+    		if ($error_text != "" && $ignore_errors == 0) die($error_text);
+
+	} 
+	# if query was a insert statement
+	elseif($value['type'] == "INSERT" && $value["table"] != " domain_admins" ) {
+
+		$val = $value['insertvalue'];	
+		$dn= "mail=" . $val["mail"] . "," . $value['userbase'];
+	//	print_r($val);
+    		if ($CONF['database_type'] == "ldap") $result = @ldap_add ($link, $dn,$val )
+       		or $error_text = "<p />DEBUG vikas INFORMATION:<br />Invalid query: " . ldap_error($link) . "$DEBUG_TEXT";
+    		if ($error_text != "" && $ignore_errors == 0) die($error_text);
+	}
 
     if ($error_text == "") {
+	# if query was a select statement
         if ($value['type'] == "SELECT" )
         {
             // if $query was a SELECT statement check the number of rows with [database_type]_num_rows ().
             if ($CONF['database_type'] == "ldap") $number_row = ldap_get_entries($link,$result);
 	    $number_rows = $number_row['count'];
         }
+	# if query was a insert statement
+        elseif ($value['type'] == "INSERT" )
+        {
+            // if $query was a SELECT statement check the number of rows with [database_type]_num_rows ().
+            //if ($CONF['database_type'] == "ldap") $number_row = ldap_get_entries($link,$result);
+		$number_row['count'] = "1";
+	    $number_rows = $number_row['count'];
+        }
       else
         {
             // if $query was something else, UPDATE, DELETE or INSERT check the number of rows with
             // [database_type]_affected_rows ().
-            if ($CONF['database_type'] == "mysql") $number_rows = mysql_affected_rows ($link);
+            if ($CONF['database_type'] == "ldap") $number_rows = ldap_search ($link);
         }
     }
 

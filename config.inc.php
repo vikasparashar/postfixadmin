@@ -105,7 +105,8 @@ $CONF['smtp_port'] = '25';
 // mysql_encrypt = useful for PAM integration
 // authlib = support for courier-authlib style passwords
 // dovecot:CRYPT-METHOD = use dovecotpw -s 'CRYPT-METHOD'. Example: dovecot:CRAM-MD5
-$CONF['encrypt'] = 'md5crypt';
+#$CONF['encrypt'] = 'md5crypt';
+$CONF['encrypt'] = 'cleartext';
 
 // In what flavor should courier-authlib style passwords be enrypted?
 // md5 = {md5} + base64 encoded md5 hash
